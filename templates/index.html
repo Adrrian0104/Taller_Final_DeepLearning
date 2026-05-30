@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Gemini — Análisis de Reseñas</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: #16213e;
+            padding: 40px;
+            border-radius: 20px;
+            width: 600px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #e94560;
+        }
+        p.subtitulo {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e94560;
+            background: #0f3460;
+            color: white;
+            font-size: 1rem;
+            resize: none;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 15px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { background: #c73652; }
+        .resultado {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #0f3460;
+            display: none;
+            text-align: center;
+        }
+        .resultado h2 { font-size: 1.8rem; margin-bottom: 10px; }
+        .resultado p  { color: #aaa; font-size: 1rem; }
+        .positivo { color: #4ade80; }
+        .negativo { color: #f87171; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Mini Gemini</h1>
+        <p class="subtitulo">Análisis de sentimiento en reseñas</p>
+
+        <div style="text-align:center; margin-bottom: 20px;">
+            <a href="/" style="color:#e94560; text-decoration:none; margin: 0 15px; font-size:1rem;">🤖 Analizar Reseña</a>
+            <a href="/dashboard" style="color:#e94560; text-decoration:none; margin: 0 15px; font-size:1rem;">📊 Dashboard</a>
+        </div>
+        <textarea id="texto" placeholder="Escribe aquí tu reseña en inglés..."></textarea>
+        <button onclick="predecir()">Analizar Reseña</button>
+
+        <div class="resultado" id="resultado">
+            <h2 id="prediccion"></h2>
+            <p id="confianza"></p>
+        </div>
+    </div>
+
+    <script>
+        async function predecir() {
+            const texto = document.getElementById('texto').value;
+            if (!texto.trim()) {
+                alert('Por favor escribe una reseña');
+                return;
+            }
+
+            const res = await fetch('/predecir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texto: texto })
+            });
+
+            const data = await res.json();
+            const div = document.getElementById('resultado');
+            const pred = document.getElementById('prediccion');
+            const conf = document.getElementById('confianza');
+
+            div.style.display = 'block';
+            pred.textContent = data.prediccion;
+            pred.className = data.prediccion.includes('Positivo') ? 'positivo' : 'negativo';
+            conf.textContent = `Confianza: ${data.confianza}`;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard — Mini Gemini</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: #e94560;
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+        .subtitulo {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+        .nav {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav a {
+            color: #e94560;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 1rem;
+        }
+        .nav a:hover { text-decoration: underline; }
+        .cards {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 15px;
+            padding: 25px 35px;
+            text-align: center;
+            min-width: 160px;
+        }
+        .card h2 {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+        }
+        .card p { color: #aaa; font-size: 0.9rem; }
+        .total   h2 { color: #60a5fa; }
+        .pos     h2 { color: #4ade80; }
+        .neg     h2 { color: #f87171; }
+        .conf    h2 { color: #facc15; }
+        .graficas {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        .grafica-box {
+            background: #16213e;
+            border-radius: 15px;
+            padding: 25px;
+            width: 340px;
+        }
+        .grafica-box h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #e94560;
+        }
+        .historial-box {
+            background: #16213e;
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .historial-box h3 {
+            color: #e94560;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #0f3460;
+            padding: 10px;
+            text-align: left;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #0f3460;
+            font-size: 0.85rem;
+        }
+        .positivo { color: #4ade80; }
+        .negativo { color: #f87171; }
+        .btn-volver {
+            display: block;
+            text-align: center;
+            margin: 20px auto;
+            padding: 12px 30px;
+            background: #e94560;
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            width: fit-content;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 Dashboard — Mini Gemini</h1>
+    <p class="subtitulo">Estadísticas de predicciones en tiempo real</p>
+
+    <div class="nav">
+        <a href="/">🤖 Analizar Reseña</a>
+        <a href="/dashboard">📊 Dashboard</a>
+    </div>
+
+    <div class="cards">
+        <div class="card total">
+            <h2 id="total">0</h2>
+            <p>Total analizadas</p>
+        </div>
+        <div class="card pos">
+            <h2 id="positivos">0</h2>
+            <p>Positivas ✅</p>
+        </div>
+        <div class="card neg">
+            <h2 id="negativos">0</h2>
+            <p>Negativas ⛔</p>
+        </div>
+        <div class="card conf">
+            <h2 id="confianza">0%</h2>
+            <p>Confianza promedio</p>
+        </div>
+    </div>
+
+    <div class="graficas">
+        <div class="grafica-box">
+            <h3>Distribución de Sentimientos</h3>
+            <canvas id="graficaPie"></canvas>
+        </div>
+        <div class="grafica-box">
+            <h3>Confianza por Predicción</h3>
+            <canvas id="graficaBar"></canvas>
+        </div>
+    </div>
+
+    <div class="historial-box">
+        <h3>📋 Últimas 10 Predicciones</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Texto</th>
+                    <th>Predicción</th>
+                    <th>Confianza</th>
+                </tr>
+            </thead>
+            <tbody id="tablaHistorial"></tbody>
+        </table>
+    </div>
+
+    <a href="/" class="btn-volver">← Volver a analizar</a>
+
+    <script>
+        let graficaPie = null;
+        let graficaBar = null;
+
+        async function cargarEstadisticas() {
+            const res  = await fetch('/estadisticas');
+            const data = await res.json();
+
+            document.getElementById('total').textContent     = data.total;
+            document.getElementById('positivos').textContent = data.positivos;
+            document.getElementById('negativos').textContent = data.negativos;
+            document.getElementById('confianza').textContent = data.confianza_promedio + '%';
+
+            // Gráfica de pastel
+            if (graficaPie) graficaPie.destroy();
+            graficaPie = new Chart(document.getElementById('graficaPie'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positivas', 'Negativas'],
+                    datasets: [{
+                        data: [data.positivos, data.negativos],
+                        backgroundColor: ['#4ade80', '#f87171'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    plugins: { legend: { labels: { color: 'white' } } }
+                }
+            });
+
+            // Gráfica de barras
+            if (graficaBar) graficaBar.destroy();
+            const labels   = data.historial.map((_, i) => `#${i+1}`);
+            const valores  = data.historial.map(h => h.confianza);
+            const colores  = data.historial.map(h =>
+                h.prediccion.includes('Positivo') ? '#4ade80' : '#f87171'
+            );
+            graficaBar = new Chart(document.getElementById('graficaBar'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Confianza (%)',
+                        data: valores,
+                        backgroundColor: colores,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            min: 50, max: 100,
+                            ticks: { color: 'white' },
+                            grid:  { color: '#0f3460' }
+                        },
+                        x: { ticks: { color: 'white' }, grid: { color: '#0f3460' } }
+                    },
+                    plugins: { legend: { labels: { color: 'white' } } }
+                }
+            });
+
+            // Tabla historial
+            const tbody = document.getElementById('tablaHistorial');
+            tbody.innerHTML = '';
+            data.historial.reverse().forEach((h, i) => {
+                const clase = h.prediccion.includes('Positivo') ? 'positivo' : 'negativo';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${i+1}</td>
+                        <td>${h.texto}</td>
+                        <td class="${clase}">${h.prediccion}</td>
+                        <td>${h.confianza}%</td>
+                    </tr>`;
+            });
+        }
+
+        cargarEstadisticas();
+        setInterval(cargarEstadisticas, 5000); // actualiza cada 5 segundos
+    </script>
+</body>
+</html>
